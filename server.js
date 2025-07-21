@@ -11,7 +11,6 @@ const Schedule = require('./models/Schedule');
 
 // In-memory state (resets on restart)
 let autoMode = true;
-let feederOpen = false;
 let manualTrigger = false;
 
 // MongoDB connection
@@ -92,7 +91,7 @@ app.get('/api/status', async (req, res) => {
     res.json({
       time,
       mode: autoMode ? 'auto' : 'manual',
-      feeder: feederOpen ? 'open' : 'closed',
+      feeder: manualTrigger ? 'open' : 'closed', // Optional, reflect active trigger
       schedules,
       manualTrigger
     });
@@ -111,7 +110,6 @@ app.post('/api/mode', (req, res) => {
 app.post('/api/manual', (req, res) => {
   if (!autoMode) {
     manualTrigger = true;
-    feederOpen = true;
     res.json({ message: 'Feeder manually triggered' });
   } else {
     res.status(403).json({ error: 'Manual control disabled in AUTO mode' });
@@ -121,7 +119,6 @@ app.post('/api/manual', (req, res) => {
 // Reset manual trigger (called by ESP after using it)
 app.post('/api/manual/reset', (req, res) => {
   manualTrigger = false;
-  feederOpen = false;
   res.json({ message: 'Manual trigger reset' });
 });
 
