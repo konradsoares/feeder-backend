@@ -1,7 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -10,17 +9,17 @@ app.use(express.json());
 
 const Schedule = require('./models/Schedule');
 
-// In-memory state (this would reset on restart)
+// In-memory state (resets on restart)
 let autoMode = true;
 let feederOpen = false;
-let currentTime = 'Unknown';
+let manualTrigger = false;
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {})
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error(err));
 
-// === API ENDPOINTS ===
+/* === API ENDPOINTS === */
 
 // GET all scheduled times
 app.get('/api/schedules', async (req, res) => {
@@ -32,13 +31,12 @@ app.get('/api/schedules', async (req, res) => {
   }
 });
 
+// GET Dublin time
 app.get('/api/time', (req, res) => {
   const now = new Date();
-  
-  // Convert to Dublin time
-  const options = { timeZone: 'Europe/Dublin', hour12: false };
   const formatter = new Intl.DateTimeFormat('en-GB', {
-    ...options,
+    timeZone: 'Europe/Dublin',
+    hour12: false,
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -53,7 +51,8 @@ app.get('/api/time', (req, res) => {
     second: parseInt(timeObj.second),
   });
 });
-// POST new schedule
+
+// POST a new schedule
 app.post('/api/schedules', async (req, res) => {
   try {
     const newSchedule = new Schedule(req.body);
@@ -64,16 +63,7 @@ app.post('/api/schedules', async (req, res) => {
   }
 });
 
-app.post('/api/manual', (req, res) => {
-  if (!autoMode) {
-    manualTrigger = true;
-    res.json({ message: 'Manual trigger activated' });
-  } else {
-    res.status(403).json({ error: 'Manual control disabled in AUTO mode' });
-  }
-});
-
-// DELETE schedule by ID
+// DELETE a schedule
 app.delete('/api/schedules/:id', async (req, res) => {
   try {
     await Schedule.findByIdAndDelete(req.params.id);
@@ -83,39 +73,59 @@ app.delete('/api/schedules/:id', async (req, res) => {
   }
 });
 
-let manualTrigger = false; // ← Add this above if not declared
+// GET system status
 app.get('/api/status', async (req, res) => {
   try {
-    const schedules = await Schedule.find(); // ← add this
+    const schedules = await Schedule.find();
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Dublin',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const parts = formatter.formatToParts(now);
+    const timeObj = Object.fromEntries(parts.map(p => [p.type, p.value]));
+    const time = `${timeObj.hour}:${timeObj.minute}`;
+
     res.json({
-      time: currentTime,
+      time,
       mode: autoMode ? 'auto' : 'manual',
       feeder: feederOpen ? 'open' : 'closed',
-      schedules, // ← include this
-      manualTrigger: feederOpen && !autoMode // ← optional
+      schedules,
+      manualTrigger
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch status' });
   }
 });
 
-// Toggle between auto and manual mode
+// Toggle auto/manual mode
 app.post('/api/mode', (req, res) => {
   autoMode = !autoMode;
   res.json({ mode: autoMode ? 'auto' : 'manual' });
 });
 
-// Manually trigger feeder open/close
+// Trigger feeder manually
 app.post('/api/manual', (req, res) => {
   if (!autoMode) {
-    feederOpen = !feederOpen;
-    res.json({ message: `Feeder ${feederOpen ? 'opened' : 'closed'}` });
+    manualTrigger = true;
+    feederOpen = true;
+    res.json({ message: 'Feeder manually triggered' });
   } else {
     res.status(403).json({ error: 'Manual control disabled in AUTO mode' });
   }
 });
 
-// Server start
+// Reset manual trigger (called by ESP after using it)
+app.post('/api/manual/reset', (req, res) => {
+  manualTrigger = false;
+  feederOpen = false;
+  res.json({ message: 'Manual trigger reset' });
+});
+
+// Start server
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`Feeder API running on port ${PORT}`);
