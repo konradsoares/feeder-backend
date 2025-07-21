@@ -20,6 +20,13 @@ mongoose.connect(process.env.MONGO_URI, {})
 
 /* === API ENDPOINTS === */
 
+// Update feeder status (called by ESP)
+app.post('/api/feeder-state', (req, res) => {
+  const { state } = req.body;
+  feederOpen = state === 'open';
+  res.json({ message: `Feeder state set to ${state}` });
+});
+
 // GET all scheduled times
 app.get('/api/schedules', async (req, res) => {
   try {
