@@ -20,22 +20,6 @@ mongoose.connect(process.env.MONGO_URI, {})
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error(err));
 
-// Fetch current Dublin time every minute
-async function updateTime() {
-  try {
-    const res = await axios.get('http://worldtimeapi.org/api/timezone/Europe/Dublin');
-    const dt = res.data.datetime;
-    const hour = dt.substring(11, 13);
-    const minute = dt.substring(14, 16);
-    currentTime = `${hour}:${minute}`;
-  } catch (err) {
-    console.error('Failed to fetch time:', err.message);
-    currentTime = 'Error';
-  }
-}
-updateTime();
-setInterval(updateTime, 60 * 1000);
-
 // === API ENDPOINTS ===
 
 // GET all scheduled times
