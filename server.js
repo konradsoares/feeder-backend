@@ -80,6 +80,15 @@ app.post('/api/schedules', async (req, res) => {
   }
 });
 
+app.post('/api/manual', (req, res) => {
+  if (!autoMode) {
+    manualTrigger = true;
+    res.json({ message: 'Manual trigger activated' });
+  } else {
+    res.status(403).json({ error: 'Manual control disabled in AUTO mode' });
+  }
+});
+
 // DELETE schedule by ID
 app.delete('/api/schedules/:id', async (req, res) => {
   try {
@@ -90,13 +99,22 @@ app.delete('/api/schedules/:id', async (req, res) => {
   }
 });
 
-// GET system status
-app.get('/api/status', (req, res) => {
-  res.json({
-    time: currentTime,
-    mode: autoMode ? 'auto' : 'manual',
-    feeder: feederOpen ? 'open' : 'closed'
-  });
+let manualTrigger = false; // ← Add this above if not declared
+
+app.get('/api/status', async (req, res) => {
+  try {
+    const schedules = await Schedule.find();
+
+    res.json({
+      time: currentTime,
+      mode: autoMode ? 'auto' : 'manual',
+      feeder: feederOpen ? 'open' : 'closed',
+      schedules,
+      manualTrigger
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Toggle between auto and manual mode
