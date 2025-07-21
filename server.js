@@ -48,6 +48,27 @@ app.get('/api/schedules', async (req, res) => {
   }
 });
 
+app.get('/api/time', (req, res) => {
+  const now = new Date();
+  
+  // Convert to Dublin time
+  const options = { timeZone: 'Europe/Dublin', hour12: false };
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    ...options,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
+  const parts = formatter.formatToParts(now);
+  const timeObj = Object.fromEntries(parts.map(p => [p.type, p.value]));
+
+  res.json({
+    hour: parseInt(timeObj.hour),
+    minute: parseInt(timeObj.minute),
+    second: parseInt(timeObj.second),
+  });
+});
 // POST new schedule
 app.post('/api/schedules', async (req, res) => {
   try {
