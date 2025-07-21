@@ -100,20 +100,18 @@ app.delete('/api/schedules/:id', async (req, res) => {
 });
 
 let manualTrigger = false; // ← Add this above if not declared
-
 app.get('/api/status', async (req, res) => {
   try {
-    const schedules = await Schedule.find();
-
+    const schedules = await Schedule.find(); // ← add this
     res.json({
       time: currentTime,
       mode: autoMode ? 'auto' : 'manual',
       feeder: feederOpen ? 'open' : 'closed',
-      schedules,
-      manualTrigger
+      schedules, // ← include this
+      manualTrigger: feederOpen && !autoMode // ← optional
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to fetch status' });
   }
 });
 
