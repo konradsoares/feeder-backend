@@ -1,41 +1,42 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Replace with Railway-provided URI in production
-const mongoUri = process.env.MONGO_URI || "mongodb://mongo:elyUqREAoxfkAdduKaEgEGdlDGRVYBwH@yamabiko.proxy.rlwy.net:21817";
+const Schedule = require('./models/Schedule');
 
-mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true });
+// MongoDB connection
+mongoose.connect(process.env.MONGO_URI, {
+}).then(() => console.log('MongoDB connected'))
+  .catch(err => console.error(err));
 
-const scheduleSchema = new mongoose.Schema({
-  hour: Number,
-  minute: Number,
-  action: String // "open" or "close"
+// GET all scheduled times
+app.get('/api/schedules', async (req, res) => {
+  try {
+    const schedules = await Schedule.find();
+    res.json(schedules);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-const Schedule = mongoose.model("Schedule", scheduleSchema);
-
-// Add new schedule
-app.post("/api/schedule", async (req, res) => {
-  const { hour, minute, action } = req.body;
-  const doc = new Schedule({ hour, minute, action });
-  await doc.save();
-  res.json({ message: "Scheduled" });
+// POST a new schedule
+app.post('/api/schedules', async (req, res) => {
+  try {
+    const newSchedule = new Schedule(req.body);
+    await newSchedule.save();
+    res.status(201).json(newSchedule);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
-// Get current action based on hour/minute
-app.get("/api/check", async (req, res) => {
-  const { hour, minute } = req.query;
-  const match = await Schedule.findOne({ hour: parseInt(hour), minute: parseInt(minute) });
-  res.json({ action: match ? match.action : "none" });
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`Feeder API running on port ${PORT}`);
 });
-
-app.get("/", (_, res) => res.send("Feeder API running."));
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running on port", PORT));
 
