@@ -109,12 +109,14 @@ app.post('/api/mode', (req, res) => {
 // Trigger feeder manually
 app.post('/api/manual', (req, res) => {
   if (!autoMode) {
+    feederOpen = !feederOpen;  // toggle state
     manualTrigger = true;
-    res.json({ message: 'Feeder manually triggered' });
+    res.json({ message: `Feeder ${feederOpen ? 'opened' : 'closed'}` });
   } else {
     res.status(403).json({ error: 'Manual control disabled in AUTO mode' });
   }
 });
+
 
 // Reset manual trigger (called by ESP after using it)
 app.post('/api/manual/reset', (req, res) => {
